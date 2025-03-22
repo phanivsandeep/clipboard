@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import CryptoJS from 'crypto-js';
+import { FaEye, FaEyeSlash } from 'react-icons/fa'; // Import eye icons
 
 const SignupForm = ({ onCancel, onSuccess }) => {
   const [email, setEmail] = useState('');
@@ -9,12 +10,49 @@ const SignupForm = ({ onCancel, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [showPassword, setShowPassword] = useState(false); // State for password visibility
+  const [passwordValidation, setPasswordValidation] = useState({
+    minLength: false,
+    hasLowercase: false,
+    hasNumber: false,
+    hasSymbol: false,
+  });
+
+  // Password validation regex patterns
+  const passwordRegex = {
+    minLength: /.{5,}/,
+    hasLowercase: /[a-z]/,
+    hasNumber: /[0-9]/,
+    hasSymbol: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/,
+  };
+
+  // Check password validation on each password change
+  useEffect(() => {
+    setPasswordValidation({
+      minLength: passwordRegex.minLength.test(password),
+      hasLowercase: passwordRegex.hasLowercase.test(password),
+      hasNumber: passwordRegex.hasNumber.test(password),
+      hasSymbol: passwordRegex.hasSymbol.test(password),
+    });
+  }, [password]);
+
+  // Check if all password requirements are met
+  const isPasswordValid = Object.values(passwordValidation).every(Boolean);
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
 
   const handleSignup = async (e) => {
     e.preventDefault();
     
     if (!email || !password || !username) {
       setError('Please fill in all fields');
+      return;
+    }
+
+    if (!isPasswordValid) {
+      setError('Please ensure your password meets all requirements');
       return;
     }
     
@@ -135,17 +173,49 @@ const SignupForm = ({ onCancel, onSuccess }) => {
             />
           </div>
           
-          <div className="mb-6">
+          <div className="mb-2">
             <label htmlFor="password" className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-2">Password</label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Create a password"
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              required
-            />
+            <div className="relative">
+              <input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Create a password"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white pr-10"
+                required
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                onClick={togglePasswordVisibility}
+              >
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
+              </button>
+            </div>
+          </div>
+          
+          {/* Password requirements display */}
+          <div className="mb-4 text-sm">
+            <p className="text-gray-700 dark:text-gray-300 mb-1">Password requirements:</p>
+            <ul className="space-y-1 text-xs">
+              <li className={`flex items-center ${passwordValidation.minLength ? 'text-green-500 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                <span className="mr-1">{passwordValidation.minLength ? '✓' : '○'}</span> 
+                Minimum 5 characters
+              </li>
+              <li className={`flex items-center ${passwordValidation.hasLowercase ? 'text-green-500 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                <span className="mr-1">{passwordValidation.hasLowercase ? '✓' : '○'}</span> 
+                At least 1 lowercase letter
+              </li>
+              <li className={`flex items-center ${passwordValidation.hasNumber ? 'text-green-500 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                <span className="mr-1">{passwordValidation.hasNumber ? '✓' : '○'}</span> 
+                At least 1 number
+              </li>
+              <li className={`flex items-center ${passwordValidation.hasSymbol ? 'text-green-500 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                <span className="mr-1">{passwordValidation.hasSymbol ? '✓' : '○'}</span> 
+                At least 1 special character (!@#$%^&*)
+              </li>
+            </ul>
           </div>
           
           {error && (
@@ -157,8 +227,8 @@ const SignupForm = ({ onCancel, onSuccess }) => {
           <div className="flex gap-3">
             <button 
               type="submit" 
-              className="w-full bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-700 dark:hover:bg-indigo-600 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
-              disabled={loading}
+              className={`w-full ${isPasswordValid ? 'bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-700 dark:hover:bg-indigo-600' : 'bg-indigo-400 dark:bg-indigo-500 cursor-not-allowed'} text-white font-medium py-2 px-4 rounded-md transition-colors duration-200`}
+              disabled={loading || !isPasswordValid}
             >
               {loading ? 'Creating account...' : 'Sign Up'}
             </button>

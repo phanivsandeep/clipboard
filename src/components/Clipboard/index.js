@@ -69,28 +69,26 @@ const Clipboard = () => {
     }, 4000);
   };
 
-
-  const verifyPassword = useCallback(async (enteredUsername, enteredPassword) => {
+  const verifyPassword = useCallback(async (identifier, enteredPassword, isEmailLogin = false) => {
     try {
       setStatus('Verifying your credentials...');
       setStatusType('loading');
       
-
+      // Query based on identifier type
       const { data: userData, error: userError } = await supabase
         .from('clipboard_users')
         .select('*')
-        .eq('username', enteredUsername)
+        .eq(isEmailLogin ? 'email' : 'username', identifier)
         .single();
       
       if (userError && userError.code === 'PGRST116') {
-        setStatus('Account not found. Please check your username or create an account.');
+        setStatus(`Account not found. Please check your ${isEmailLogin ? 'email' : 'username'} or create an account.`);
         setStatusType('error');
         return;
       } else if (userError) {
         throw userError;
       }
       
-
       setUserId(userData.id);
       
       const passwordHash = hashPassword(enteredPassword);
@@ -101,12 +99,10 @@ const Clipboard = () => {
         return;
       }
       
-
       if (userData.clipboard_count >= 2) {
         setClipboardCount(userData.clipboard_count);
       }
       
-
       const { data: clipboardData, error: clipboardError } = await supabase
         .from('clipboards')
         .select('id, encrypted_data')
@@ -132,14 +128,17 @@ const Clipboard = () => {
         }
       }
       
-      setUsername(enteredUsername);
+      // Store the username from the database
+      setUsername(userData.username);
       setPassword(enteredPassword);
       
       setStatus('Authentication successful! Loading your clipboard...');
       setStatusType('success');
       
-      setCookie('clipboard_username', enteredUsername);
+      // Store the identifier they used to login (username or email)
+      setCookie('clipboard_identifier', identifier);
       setCookie('clipboard_password', enteredPassword);
+      setCookie('clipboard_login_type', isEmailLogin ? 'email' : 'username');
       
       setTimeout(() => {
         setIsVerified(true);
@@ -153,17 +152,16 @@ const Clipboard = () => {
       setStatusType('error');
     }
   }, []);
-
   
   useEffect(() => {
-    const savedUsername = getCookie('clipboard_username');
+    const savedIdentifier = getCookie('clipboard_identifier');
     const savedPassword = getCookie('clipboard_password');
+    const loginType = getCookie('clipboard_login_type');
     
-    if (savedUsername && savedPassword) {
-      verifyPassword(savedUsername, savedPassword);
+    if (savedIdentifier && savedPassword) {
+      verifyPassword(savedIdentifier, savedPassword, loginType === 'email');
     }
   }, [verifyPassword]);
-
   const refreshClipboard = async () => {
     if (!isVerified || !username || !password) return;
     
