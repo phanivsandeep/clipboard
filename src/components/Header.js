@@ -60,7 +60,7 @@ const Header = ({ username, onLogout, onRefresh, selectedClipboardId, onSelectCl
   return (
     <header className="bg-indigo-600 dark:bg-indigo-800 text-white py-4 px-6 flex justify-between items-center shadow-md">
       <div className="flex items-center">
-        <h1 className="text-xl font-semibold">Universal Clipboard</h1>
+        <h1 className="text-xl font-semibold">SnipSpace</h1>
         {username && (
           <span className="ml-4 bg-indigo-500 dark:bg-indigo-700 px-3 py-1 rounded-full text-sm hidden md:inline">
             {username}
