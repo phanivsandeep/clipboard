@@ -1,68 +1,52 @@
-import { supabase } from '../utils/supabaseClient';
+import { supabase } from './supabaseClient';
 import CryptoJS from 'crypto-js';
+import { setCookie } from './cookieUtils';
 
 export const hashPassword = (pwd) => {
   return CryptoJS.SHA256(pwd).toString();
 };
 
-export const verifyUser = async (identifier, password, isEmailLogin) => {
-  let userData;
-  let userError;
-
-  if (isEmailLogin) {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: identifier,
-      password,
-    });
-
-    if (error) {
-      return { success: false, message: 'Incorrect email or password. Please try again.' };
-    }
-
-    const { data: user, error: userErr } = await supabase
+export const verifyCredentials = async (identifier, password, isHashed, isEmailLogin) => {
+  try {
+    const { data: userExists, error: existsError } = await supabase
       .from('clipboard_users')
-      .select('*')
-      .eq('auth_id', data.user.id)
+      .select('id')
+      .eq(isEmailLogin ? 'email' : 'username', identifier)
       .single();
-
-    userData = user;
-    userError = userErr;
-  } else {
-    const { data, error } = await supabase
+    
+    if (existsError && existsError.code === 'PGRST116') {
+      return { success: false, message: `Account not found...`, type: 'error' };
+    }
+    
+    const passwordHash = isHashed ? password : hashPassword(password);
+    const { data: userData, error: authError } = await supabase
       .from('clipboard_users')
-      .select('*')
-      .eq('username', identifier)
+      .select('id, username, clipboard_count')
+      .eq(isEmailLogin ? 'email' : 'username', identifier)
+      .eq('password_hash', passwordHash)
       .single();
-
-    userData = data;
-    userError = error;
-
-    if (userError && userError.code === 'PGRST116') {
-      return { success: false, message: 'Account not found. Please check your username or create an account.' };
-    } else if (userError) {
-      throw userError;
+    
+    if (authError || !userData) {
+      return { success: false, message: 'Incorrect password...', type: 'error' };
     }
-
-    const passwordHash = hashPassword(password);
-
-    if (userData.password_hash !== passwordHash) {
-      return { success: false, message: 'Incorrect password. Please try again.' };
-    }
+    
+    const originalPassword = isHashed ? null : password;
+    setCookie('clipboard_identifier', identifier);
+    setCookie('clipboard_original_password', originalPassword); 
+    setCookie('clipboard_password_hash', passwordHash); 
+    setCookie('clipboard_is_hashed', isHashed ? 'true' : 'false');
+    setCookie('clipboard_login_type', isEmailLogin ? 'email' : 'username');
+    
+    return {
+      success: true,
+      message: 'Authentication successful! Loading your clipboard...',
+      type: 'success',
+      userData,
+      originalPassword,
+      passwordHash
+    };
+  } catch (error) {
+    console.error('Error verifying credentials:', error);
+    return { success: false, message: 'Error accessing clipboard...', type: 'error' };
   }
-
-  return { success: true, userData };
-};
-
-export const fetchClipboardData = async (userId, password) => {
-  const { data: clipboardData, error: clipboardError } = await supabase
-    .from('clipboards')
-    .select('id, encrypted_data')
-    .eq('user_id', userId)
-    .single();
-
-  if (clipboardError && clipboardError.code !== 'PGRST116') {
-    throw clipboardError;
-  }
-
-  return clipboardData;
 };
