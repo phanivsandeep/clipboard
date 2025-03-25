@@ -1,4 +1,3 @@
-// src/utils/clipboardService.js
 import { supabase } from './supabaseClient';
 import { encryptData, decryptData } from './encryption';
 
@@ -44,7 +43,6 @@ export const fetchClipboard = async (userId, clipboardId, password) => {
 
 export const saveClipboard = async (userId, textAreas, password, recordId = null) => {
   try {
-    // Get user's clipboard count first
     const { data: userData, error: userError } = await supabase
       .from('clipboard_users')
       .select('id, clipboard_count')
@@ -53,8 +51,7 @@ export const saveClipboard = async (userId, textAreas, password, recordId = null
       
     if (userError) throw userError;
     
-    // Check if user already has 2 clipboards and this is a new one
-    if (userData.clipboard_count >= 2 && !recordId) {
+      if (userData.clipboard_count >= 2 && !recordId) {
       return {
         success: false,
         message: 'You\'ve reached the maximum limit of 2 clipboards.'
@@ -66,7 +63,6 @@ export const saveClipboard = async (userId, textAreas, password, recordId = null
     let response;
     
     if (recordId) {
-      // Update existing clipboard
       response = await supabase
         .from('clipboards')
         .update({
@@ -75,7 +71,6 @@ export const saveClipboard = async (userId, textAreas, password, recordId = null
         })
         .eq('id', recordId);
     } else {
-      // Create new clipboard
       response = await supabase
         .from('clipboards')
         .insert({
@@ -85,7 +80,6 @@ export const saveClipboard = async (userId, textAreas, password, recordId = null
         .select();
         
       if (response.data && response.data[0]) {
-        // Update user's clipboard count
         await supabase
           .from('clipboard_users')
           .update({

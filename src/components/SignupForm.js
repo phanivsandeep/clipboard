@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import CryptoJS from 'crypto-js';
-import { FaEye, FaEyeSlash } from 'react-icons/fa'; // Import eye icons
+import { FaEye, FaEyeSlash } from 'react-icons/fa'; 
 
 const SignupForm = ({ onCancel, onSuccess }) => {
   const [email, setEmail] = useState('');
@@ -10,7 +10,7 @@ const SignupForm = ({ onCancel, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [showPassword, setShowPassword] = useState(false); // State for password visibility
+  const [showPassword, setShowPassword] = useState(false);
   const [passwordValidation, setPasswordValidation] = useState({
     minLength: false,
     hasLowercase: false,
@@ -18,7 +18,6 @@ const SignupForm = ({ onCancel, onSuccess }) => {
     hasSymbol: false,
   });
 
-  // Password validation regex patterns
   const passwordRegex = {
     minLength: /.{5,}/,
     hasLowercase: /[a-z]/,
@@ -26,7 +25,6 @@ const SignupForm = ({ onCancel, onSuccess }) => {
     hasSymbol: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/,
   };
 
-  // Check password validation on each password change
   useEffect(() => {
     setPasswordValidation({
       minLength: passwordRegex.minLength.test(password),
@@ -36,7 +34,6 @@ const SignupForm = ({ onCancel, onSuccess }) => {
     });
   }, [password]);
 
-  // Check if all password requirements are met
   const isPasswordValid = Object.values(passwordValidation).every(Boolean);
 
   const togglePasswordVisibility = () => {

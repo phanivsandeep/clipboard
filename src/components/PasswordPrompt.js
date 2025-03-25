@@ -7,7 +7,7 @@ const PasswordPrompt = ({ onVerify, isVerified }) => {
   const [error, setError] = useState('');
   const [showSignup, setShowSignup] = useState(false);
   const [isEmailLogin, setIsEmailLogin] = useState(false);
-  const [showPassword, setShowPassword] = useState(false); // State for password visibility
+  const [showPassword, setShowPassword] = useState(false); 
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -19,22 +19,21 @@ const PasswordPrompt = ({ onVerify, isVerified }) => {
       setError('Please enter a password');
       return;
     }
-
+  
     try {
       setError('');
-      onVerify(identifier, password, isEmailLogin);
+
+      onVerify(identifier, password, false, isEmailLogin);
     } catch (error) {
       console.error('Error logging in:', error);
       setError('Failed to log in. Please check your credentials and try again.');
     }
   };
-
   const handleSignupSuccess = () => {
     setShowSignup(false);
     setIsEmailLogin(true);
   };
 
-  // Toggle password visibility
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };

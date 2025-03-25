@@ -13,12 +13,31 @@ const Header = ({ username, onLogout, onRefresh, selectedClipboardId, onSelectCl
     }
   }, [username, selectedClipboardId]);
   
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      const dropdown = document.querySelector('.clipboard-dropdown');
+      if (isDropdownOpen && dropdown && !dropdown.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isDropdownOpen]);
+  
   const fetchUserClipboards = async () => {
     try {
+      const isEmail = username.includes('@');
+      
       const { data: userData, error: userError } = await supabase
         .from('clipboard_users')
         .select('id')
-        .eq('username', username)
+        .eq(isEmail ? 'email' : 'username', username)
         .single();
         
       if (userError) throw userError;
@@ -38,8 +57,11 @@ const Header = ({ username, onLogout, onRefresh, selectedClipboardId, onSelectCl
   };
   
   const handleLogout = () => {
-    deleteCookie('clipboard_username');
-    deleteCookie('clipboard_password');
+    deleteCookie('clipboard_identifier');
+    deleteCookie('clipboard_password_hash');
+    deleteCookie('clipboard_original_password'); 
+    deleteCookie('clipboard_is_hashed');
+    deleteCookie('clipboard_login_type');
     onLogout();
   };
   
@@ -70,10 +92,10 @@ const Header = ({ username, onLogout, onRefresh, selectedClipboardId, onSelectCl
       <div className="flex items-center gap-3">
         <ThemeToggle />
         
-        {username && (
+        {username ? (
           <>
             {/* Clipboard Manager Dropdown */}
-            <div className="relative">
+            <div className="relative clipboard-dropdown">
               <button
                 onClick={toggleDropdown}
                 className="bg-indigo-500 hover:bg-indigo-700 dark:bg-indigo-700 dark:hover:bg-indigo-600 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200 flex items-center"
@@ -170,6 +192,9 @@ const Header = ({ username, onLogout, onRefresh, selectedClipboardId, onSelectCl
               </span>
             </button>
           </>
+        ) : (
+
+          null
         )}
       </div>
     </header>

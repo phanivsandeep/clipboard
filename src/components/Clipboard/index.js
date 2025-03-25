@@ -56,51 +56,56 @@ const Clipboard = () => {
     showStatus('New clipboard created! Save to keep your changes.', 'info', 4000);
   };
 
-const verifyPassword = useCallback(async (identifier, enteredPassword, isHashed = false, isEmailLogin = false) => {
-  try {
-    showStatus('Verifying your credentials...', 'loading', 0);
-    const result = await verifyCredentials(identifier, enteredPassword, isHashed, isEmailLogin);
-    
-    if (result.success) {
-      const userData = result.userData;
-      setUserId(userData.id);
-      setUsername(userData.username);
-      const decryptionPassword = isHashed ? enteredPassword : result.originalPassword || enteredPassword;
-      setPassword(decryptionPassword);
+  const verifyPassword = useCallback(async (identifier, enteredPassword, isHashed = false, isEmailLogin = false) => {
+    try {
+      showStatus('Verifying your credentials...', 'loading', 0);
+      console.log('Verifying with:', { identifier, passwordLength: enteredPassword.length, isHashed, isEmailLogin });
       
-      if (userData.clipboard_count >= 2) {
-        setClipboardCount(userData.clipboard_count);
-      }
+      const result = await verifyCredentials(identifier, enteredPassword, isHashed, isEmailLogin);
       
-      const clipboardResult = await fetchClipboard(userData.id, null, decryptionPassword);
-      
-      if (clipboardResult.success) {
-        setTextAreas(clipboardResult.data);
-        setRecordId(clipboardResult.clipboardId);
-        showStatus('Authentication successful!', 'success');
+      if (result.success) {
+        const userData = result.userData;
+        setUserId(userData.id);
+        setUsername(userData.username);
         
-        setTimeout(() => {
-          setIsVerified(true);
-          setStatus('');
-          setStatusType('');
-        }, 1000);
-      } else {
-        if (isHashed) {
-          showStatus('Please enter your password again to decrypt your clipboard', 'info');
-        } else {
-          showStatus('Unable to decrypt your clipboard. Please try again.', 'error');
+        setPassword(result.passwordHash);
+        
+        if (userData.clipboard_count >= 2) {
+          setClipboardCount(userData.clipboard_count);
         }
+        
+        try {
+          const clipboardResult = await fetchClipboard(userData.id, null, result.passwordHash);
+          
+          if (clipboardResult.success) {
+            setTextAreas(clipboardResult.data);
+            setRecordId(clipboardResult.clipboardId);
+            showStatus('Authentication successful!', 'success');
+          } else {
+            console.log('No clipboard data or unable to decrypt:', clipboardResult.message);
+            setTextAreas([{ id: Date.now(), content: '' }]);
+            showStatus('Welcome! Create your first clipboard.', 'info');
+          }
+          
+          setTimeout(() => {
+            setIsVerified(true);
+            setStatus('');
+            setStatusType('');
+          }, 1000);
+        } catch (error) {
+          console.error('Clipboard fetch error:', error);
+          setIsVerified(true);
+          showStatus('Welcome to your clipboard!', 'info');
+        }
+      } else {
+        showStatus(result.message, result.type, 0);
       }
-    } else {
-      showStatus(result.message, result.type, 0);
+    } catch (error) {
+      console.error('Error:', error);
+      showStatus('We encountered an issue accessing your clipboard. Please try again.', 'error');
     }
-  } catch (error) {
-    console.error('Error:', error);
-    showStatus('We encountered an issue accessing your clipboard. Please try again.', 'error');
-  }
-}, []);
+  }, []);
 
-// Update useEffect
 useEffect(() => {
   const savedIdentifier = getCookie('clipboard_identifier');
   const passwordHash = getCookie('clipboard_password_hash');
@@ -161,7 +166,8 @@ useEffect(() => {
     setRecordId(null);
     setUserId(null);
     deleteCookie('clipboard_identifier');
-    deleteCookie('clipboard_password');
+    deleteCookie('clipboard_password_hash'); 
+    deleteCookie('clipboard_original_password');
     deleteCookie('clipboard_is_hashed');
     deleteCookie('clipboard_login_type');
   };

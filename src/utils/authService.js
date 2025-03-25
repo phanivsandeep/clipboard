@@ -8,41 +8,48 @@ export const hashPassword = (pwd) => {
 
 export const verifyCredentials = async (identifier, password, isHashed, isEmailLogin) => {
   try {
+    const column = isEmailLogin ? 'email' : 'username';
+    
+    console.log(`Authenticating with ${column}: ${identifier}`);
+    
     const { data: userExists, error: existsError } = await supabase
       .from('clipboard_users')
       .select('id')
-      .eq(isEmailLogin ? 'email' : 'username', identifier)
+      .eq(column, identifier)
       .single();
     
-    if (existsError && existsError.code === 'PGRST116') {
-      return { success: false, message: `Account not found...`, type: 'error' };
+    if (existsError) {
+      console.log('User lookup error:', existsError);
+      if (existsError.code === 'PGRST116') {
+        return { success: false, message: `Account not found...`, type: 'error' };
+      }
+      throw existsError;
     }
     
     const passwordHash = isHashed ? password : hashPassword(password);
+    
     const { data: userData, error: authError } = await supabase
       .from('clipboard_users')
       .select('id, username, clipboard_count')
-      .eq(isEmailLogin ? 'email' : 'username', identifier)
+      .eq(column, identifier)
       .eq('password_hash', passwordHash)
       .single();
     
     if (authError || !userData) {
+      console.log('Auth error:', authError);
       return { success: false, message: 'Incorrect password...', type: 'error' };
     }
     
-    const originalPassword = isHashed ? null : password;
     setCookie('clipboard_identifier', identifier);
-    setCookie('clipboard_original_password', originalPassword); 
-    setCookie('clipboard_password_hash', passwordHash); 
-    setCookie('clipboard_is_hashed', isHashed ? 'true' : 'false');
+    setCookie('clipboard_password_hash', passwordHash);
+    setCookie('clipboard_is_hashed', 'true');
     setCookie('clipboard_login_type', isEmailLogin ? 'email' : 'username');
     
     return {
       success: true,
-      message: 'Authentication successful! Loading your clipboard...',
+      message: 'Authentication successful!',
       type: 'success',
       userData,
-      originalPassword,
       passwordHash
     };
   } catch (error) {
